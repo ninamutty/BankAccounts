@@ -1,4 +1,31 @@
+##############################
+### Learning Goals: Wave 2 ###
+##############################
+    # Create and use class methods
+    # Use a CSV file for loading data
 
+##############################
+### Requirements: Wave 2 ###
+##############################
+    # Update the Account class to be able to handle all of these fields from the CSV file used as input.
+    # For example, manually choose the data from the first line of the CSV file and ensure you can create a new instance of your Account using that data
+    # Add the following class methods to your existing Account class
+        # self.all - returns a collection of Account instances, representing all of the Accounts described in the CSV. See below for the CSV file specifications
+        # self.find(id) - returns an instance of Account where the value of the id field in the CSV matches the passed parameter
+
+
+# CSV Data File
+#
+# Bank::Account
+#
+# The data, in order in the CSV, consists of:
+# ID - (Fixnum) a unique identifier for that Account
+# Balance - (Fixnum) the account balance amount, in cents (i.e., 150 would be $1.50)
+# OpenDate - (Datetime) when the account was opened
+
+
+
+require 'csv'
 require 'awesome_print'
 require 'chronic'  ##For time.now in account creation default
 
@@ -39,8 +66,8 @@ module Bank
         end
 
         def print_banking_info
-            puts "----------------------------------"
-            puts "\nYour banking information is:
+            return "----------------------------------"
+            return "\nYour banking information is:
     Name: #{@name}
     Address: #{@address}
     ID Number: #{@owner_id_number}
@@ -50,21 +77,20 @@ module Bank
         end
     end
 
-    class Account
-        attr_reader :account_id, :time_opened
-        attr_accessor :initial_balance, :account_balance
 
-        #ID: id=rand(100000..999999)
-        #time_opened = Time.now
+    ##CREATES A BANK ACCOUNT CLASS - stores id number, balance, and time it was opened
+    class Account
+        attr_reader :account_id, :time_opened, :account_hash
+        attr_accessor :initial_balance, :account_balance
+        @@account_hash = {}
 
         ##TAKE OUT ALL DEFAULT VALUES BECAUSE IT DOESN'T LIKE THAT..
-        def initialize(id, initial_balance, time_opened)    #ID isn't unique - multiple users could have same id number...
-            @account_id = id #FIND A WAY TO MAKE SURE THE ID CAN'T BE REPEATED LATER ON
+        def initialize(id, initial_balance, time_opened)
+            @account_id = id
             raise ArgumentError, ":cannot create an account with an initial balance less than $0.00" if initial_balance < 0
             @initial_balance = initial_balance
             @account_balance = @initial_balance
             @time_opened = time_opened
-            puts "You've created a new account!"
         end
 
         def withdraw(amount)
@@ -86,39 +112,50 @@ module Bank
         def check_balance
             puts "Your current balance is: $#{("%.2f" % @account_balance)}"
         end
-    end
 
+        ####### CLASS METHODS #########
+
+        ####### CSV ACCOUNT INFORMATION ######
+        ## PSEUDOCODE ##
+        #Create an empty accounts hash - id numbers will be keys and other info will be values
+        #Open csv file of accounts - run each loop for each line
+            #id number (line[0]) is a hash key : will store another hash
+                #balance is a key with account balance, and time is key with time opened
+            # New account(hash[id], Hash[id][balance], hash[id][time])
+        #end
+
+        ### REAL CODE ### ------- THIS IS A SELF METHOD !!ACCOUNT
+        def self.gets_csv_info
+            CSV.open("support/accounts.csv", 'r').each do |account|
+                key = account[0]
+                balance = account[1].to_f/100
+                date_time = account[2]
+                @@account_hash[key] = {balance: balance, date_time: date_time}
+            end
+        end
+
+        def self.pretty_print ##Prints with strings - doesn't return a value - I wanted this because it was prettier..
+            @@account_hash.each do |key, value|
+                puts "ACCOUNT NUMBER: #{key} --- BALANCE: #{value[:balance]} --- DATE OPENED: #{value[:date_time]}"
+            end
+        end
+
+        def self.all
+            @@account_hash
+        end
+
+        ### FINDS BALANCE AND DATA/TIME ACCOUNT CREATED BASED ON ACCOUNT ID
+        def self.find(id_number)
+            @@account_hash.fetch(id_number.to_s)
+        end
+
+    end
 end
 
-puts ###Syntax to make Terminal Output more clear (for me..)####
-puts
-puts "LET'S CREATE A NEW USER AND TWO ACCOUNTS FOR THAT USER"
-nina_owner = Bank::Owner.new(43, "Nina Mutty", "1234 West 1st St, Seattle, WA, 98102") #Creates a new user/owner with name, address, and id
-nina_owner.add_account(1432, 5000, "time now")           #Creates two new accounts that are stored in the Bank::Owner.array_of_accounts (each new account is a new array value)
-nina_owner.add_account(14312, 400, "new time")
-
-
-
-puts
-puts
-puts "LETS PRINT OUT OUR USER'S BANKING INFORMATION"
-nina_owner.print_banking_info #prints nina_owner banking information
-# sam_owner.print_banking_info #prints sam_owner banking information
-
-
-puts
-puts "LETS TRY WITHDRAWALS FROM USER 1 FIRST ACCOUNT"
-nina_owner.array_of_accounts[0].withdraw(6000) #withdraws from nina_owner account 1 - test overdrawn warning
-nina_owner.array_of_accounts[0].withdraw(300) #withdraws from nina_owner account 1 (do one that passes)
-
-puts
-puts "LETS TRY DEPOSITS TO USER 1 SECOND ACCOUNT"
-nina_owner.array_of_accounts[1].deposit(200) #deposits to nina_ownder account 2
-
-
-puts
-puts "LETS REPRINT USER 1 BANKING INFORMATION"
-nina_owner.print_banking_info #reprints nina_owner banking information
+Bank::Account.gets_csv_info
+#Bank::Account.pretty_print
+ap Bank::Account.all
+ap Bank::Account.find(1214)
 
 
 
@@ -126,6 +163,58 @@ nina_owner.print_banking_info #reprints nina_owner banking information
 
 
 
+
+
+
+
+
+
+
+
+
+# puts ###Syntax to make Terminal Output more clear (for me..)####
+# puts
+# puts "LET'S CREATE A NEW USER AND TWO ACCOUNTS FOR THAT USER"
+# nina_owner = Bank::Owner.new(43, "Nina Mutty", "1234 West 1st St, Seattle, WA, 98102") #Creates a new user/owner with name, address, and id
+# nina_owner.add_account(1432, 5000, "time now")           #Creates two new accounts that are stored in the Bank::Owner.array_of_accounts (each new account is a new array value)
+# nina_owner.add_account(14312, 400, "new time")
+#
+#
+#
+# puts
+# puts
+# puts "LETS PRINT OUT OUR USER'S BANKING INFORMATION"
+# nina_owner.print_banking_info #prints nina_owner banking information
+# # sam_owner.print_banking_info #prints sam_owner banking information
+#
+#
+# puts
+# puts "LETS TRY WITHDRAWALS FROM USER 1 FIRST ACCOUNT"
+# nina_owner.array_of_accounts[0].withdraw(6000) #withdraws from nina_owner account 1 - test overdrawn warning
+# nina_owner.array_of_accounts[0].withdraw(300) #withdraws from nina_owner account 1 (do one that passes)
+#
+# puts
+# puts "LETS TRY DEPOSITS TO USER 1 SECOND ACCOUNT"
+# nina_owner.array_of_accounts[1].deposit(200) #deposits to nina_ownder account 2
+#
+#
+# puts
+# puts "LETS REPRINT USER 1 BANKING INFORMATION"
+# nina_owner.print_banking_info #reprints nina_owner banking information
+
+# Bank::Account.new #(1212, 1235667, "3/27/99 11:30")
+
+
+
+
+# account_hash = {}
+# CSV.open("support/accounts.csv", 'r').each do |line|
+#     #@account_hash[:line[0]] = {balance: line[1], date_time: line[2]}
+#     account_hash[:line[0]] = Bank::Account.new(line[0], line[1].to_f, line[2])
+#     puts "Added a loop account"
+# end
+#
+# ap account_hash
 
 
 
