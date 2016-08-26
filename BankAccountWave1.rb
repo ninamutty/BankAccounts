@@ -5,7 +5,7 @@
     # Use a CSV file for loading data
 
 ##############################
-### Requirements: Wave 2 ###
+###  Requirements: Wave 2  ###
 ##############################
     # Update the Account class to be able to handle all of these fields from the CSV file used as input.
     # For example, manually choose the data from the first line of the CSV file and ensure you can create a new instance of your Account using that data
@@ -17,9 +17,9 @@
 #################################
 ####   WHAT I'M WORKING ON   ####
 #################################
-#Make comments and clean up below file
-#Test methods (withdraw and deposit)
-#Combine files csv files????? Would make everything easier...
+# COMBINE USER ID'S NUMBERS WITH ACCOUNTS - NEED TO SHOVEL INTO AN ARRAY OF ACCOUNTS FOR EACH OWNER (AROUND LINE 200)
+# FIX UP OWNER METHODS WITH UPDATED HASH/ARRAY STRUCTURES - BASE OFF OF ACCOUNT CLASS
+# ADD WAVE THREE CHILD CLASSES
 
 
 
@@ -40,74 +40,9 @@ def strip_puncuation(words)
 end
 
 module Bank
-    class Owner
-        attr_accessor :name, :address, :array_of_accounts, :account_id
-        attr_reader :owner_id_number
-        @@owner_hash = {}
-
-        def initialize(owner_id, name, address)
-            @name = name
-            @address = address
-            @owner_id_number = owner_id
-            @array_of_accounts = []
-            puts "\nYou've created a new owner: #{@name}"
-        end
-
-        def add_account(account_id, initial_moneys, time_opened)
-            @array_of_accounts.push(Account.new(account_id, initial_moneys, time_opened))
-        end
-
-        def print_accounts
-            count = 1
-            @array_of_accounts.each do |i|
-                puts "      Account number #{i.account_id}: balance = $#{("%.2f" % i.account_balance)}"
-                count += 1
-            end
-        end
-
-        def print_banking_info
-            return "----------------------------------"
-            return "\nYour banking information is:
-    Name: #{@name}
-    Address: #{@address}
-    ID Number: #{@owner_id_number}
-    Accounts: "
-    print_accounts
-            puts "----------------------------------"
-        end
-
-
-        def self.gets_csv_info
-            CSV.open("support/owners.csv", 'r').each do |owner|
-                id = owner[0]
-                name = {first: owner[2], last: owner[1]}
-                address = {street: owner[3], city: owner[4], state: owner[5]}
-                @@owner_hash[id] = {name: name, address: address}
-            end
-            CSV.open("support/account_owners.csv", "r").each do |line|
-                key = line[1] #Owner id numbers
-                @account_id = line[0] #Account id numbers
-                @@owner_hash[key][:accounts] = Bank::Account.find(@account_id.to_s)
-            end
-        end
-
-        def self.pretty_print ##Prints with strings - doesn't return a value - I wanted this because it was prettier..
-            @@owner_hash.each do |key, value|
-                puts "ID NUMBER: #{key} --- NAME: #{value[:name][:first]} #{value[:name][:last]} --- ADDRESS: #{value[:address][:street]}, #{value[:address][:city]}, #{value[:address][:state]} --- ACCOUNT NUMBER: #{@account_id} --- ACCOUNT BALANCE: #{value[:accounts][:balance]} --- DATE OPENED: #{value[:accounts][:date_time]}"
-                puts
-            end
-        end
-
-        def self.all
-            @@owner_hash
-        end
-
-        ### FINDS BALANCE AND DATA/TIME ACCOUNT CREATED BASED ON ACCOUNT ID
-        def self.find(id_number)
-            @@owner_hash.fetch(id_number.to_s)
-        end
-    end
-
+    ##################################
+    ###  Creates Various Accounts  ###
+    ##################################
 
     ##CREATES A BANK ACCOUNT CLASS - stores id number, balance, and time it was opened
     class Account
@@ -116,12 +51,13 @@ module Bank
         @@account_hash = {}
 
         ##TAKE OUT ALL DEFAULT VALUES BECAUSE IT DOESN'T LIKE THAT..
-        def initialize(id, initial_balance, time_opened)
-            @account_id = id
-            raise ArgumentError, ":cannot create an account with an initial balance less than $0.00" if initial_balance < 0
-            @initial_balance = initial_balance
+        def initialize(hash_of_one_account) #(id, initial_balance, time_opened)
+            @account_id = hash_of_one_account[:account_id]
+             raise ArgumentError, ": cannot create an account with an initial balance less than $0.00" if hash_of_one_account[:balance] < 0
+            @initial_balance = hash_of_one_account[:balance]
             @account_balance = @initial_balance
-            @time_opened = time_opened
+            @time_opened = hash_of_one_account[:date_time]
+            #puts "You've initialized"
         end
 
         def withdraw(amount)
@@ -129,14 +65,14 @@ module Bank
                 puts "Warning: you cannot overdraw your account. Your balance is  still $#{"%.10g" % ("%.2f" % @account_balance)}."
             else
                 @account_balance -= amount
-                puts "Your new balance is: $#{("%.2f" % @account_balance)}"
+                puts "Withdrew $#{amount} - Your new balance is: $#{("%.2f" % @account_balance)}"
             end
             return @account_balance
         end
 
         def deposit(amount)
             @account_balance += amount
-            puts "Your new balance is: $#{("%.2f" % @account_balance)}"
+            puts "Deposited $#{amount} - Your new balance is: $#{("%.2f" % @account_balance)}"
             return @account_balance
         end
 
@@ -158,16 +94,19 @@ module Bank
         ### REAL CODE ### ------- THIS IS A SELF METHOD !!ACCOUNT
         def self.gets_csv_info
             CSV.open("support/accounts.csv", 'r').each do |account|
-                key = account[0]
+                account_id = account[0]
                 balance = account[1].to_f/100 ##Converts to dollars
                 date_time = account[2]
-                @@account_hash[key] = {balance: balance, date_time: date_time}
+                new_account = {account_id: account_id, balance: balance, date_time: date_time}
+                @@account_hash[account_id] = self.new(new_account)
             end
+
         end
 
+
         def self.pretty_print ##Prints with strings - doesn't return a value - I wanted this because it was prettier..
-            @@account_hash.each do |key, value|
-                puts "ACCOUNT NUMBER: #{key} --- BALANCE: #{value[:balance]} --- DATE OPENED: #{value[:date_time]}"
+            @@account_hash.each_value do |value|
+                puts "ACCOUNT NUMBER: #{value.account_id} --- BALANCE: $#{value.account_balance} --- DATE OPENED: #{value.time_opened}"
             end
         end
 
@@ -176,22 +115,184 @@ module Bank
         end
 
         ### FINDS BALANCE AND DATA/TIME ACCOUNT CREATED BASED ON ACCOUNT ID
-        def self.find(id_number)
-            @@account_hash.fetch(id_number.to_s)
+        def self.find_pretty(id)
+            search = id.to_s
+            return "ACCOUNT NUMBER: #{@@account_hash[search].account_id} --- BALANCE: $#{@@account_hash[search].account_balance} --- DATE OPENED: #{@@account_hash[search].time_opened}"
         end
 
+        def self.find(id)
+            search = id.to_s
+            return @@account_hash[search]
+        end
+    end
+
+    # class SavingsAccount < Account
+    #
+    # end
+
+
+
+
+
+
+
+
+
+
+
+
+    #########################
+    ###  Creates Ownners  ###
+    #########################
+
+    class Owner
+        attr_accessor :name, :address, :account_id, :owners_by_account_id, :account_hash, :owner_id_number
+        attr_reader :owner_id_number, :fullname, :fulladdress, :array_of_accounts
+        @@owner_hash = {}
+        @@account_hash = Bank::Account.all
+
+        def initialize(hash_of_one_owner)
+            @owner_id_number = hash_of_one_owner[:owner_id]
+            @name = hash_of_one_owner[:name]
+            @fullname = "#{@name[:first]} #{@name[:last]}"
+            @address = hash_of_one_owner[:address]
+            @fulladdress = "#{@address[:street]}, #{@address[:city]}, #{@address[:state]}"
+            @accounts = []  #### ARRAY OF OWNER'S INDIVIDUAL ACCOUNTS
+            #puts "\nYou've created a new owner: #{@fullname}"
+        end
+
+
+        ####THIS ADDS TO A SPECIFIC OWNER - NOT JUST A NEW ACCOUNT
+        def add_account
+            @array_of_accounts.push(Account.new(account_hash))
+        end
+
+        def print_accounts
+            count = 1
+            array_of_accounts.each do |i|
+                puts " Account number #{i.account_id}: balance = $#{("%.2f" % i.account_balance)}"
+                count += 1
+            end
+        end
+
+        def print_banking_info
+            return "----------------------------------"
+            return "\nYour banking information is:
+    Name: #{@name}
+    Address: #{@address}
+    ID Number: #{@owner_id_number}
+    Accounts: "
+    print_accounts
+            puts "----------------------------------"
+        end
+
+        def self.gets_csv_info
+            CSV.open("support/owners.csv", 'r').each do |owner|
+                owner_id = owner[0]
+                name = {first: owner[2], last: owner[1]}
+                address = {street: owner[3], city: owner[4], state: owner[5]}
+                new_owner = {owner_id: owner_id, name: name, address: address}
+                @@owner_hash[owner_id] = self.new(new_owner)
+            end
+
+            Bank::Account.gets_csv_info
+            # Bank::Account.pretty_print
+            @owners_by_account_id = {}
+
+            CSV.open("support/account_owners.csv", "r").each do |line|
+                owner_id = line[1] #Owner id numbers
+                @account_id = line[0].to_i #Account id numbers
+                @owners_by_account_id[@account_id] = @@owner_hash[owner_id]
+                ####THIS IS A HASH WHERE THE KEY IS THE ACCOUNT ID NUMBER AND THE VALUE IS THE OWNER ID OWNER INFORMATION
+
+            end
+
+            ap @owners_by_account_id[1213]
+
+            #ap Bank::Account.find(1212)
+            #ap @@account_hash  #### PRINT THE ACCOUNT HASH GENERATED IN THE ACCOUNT CLASS
+
+            ##################
+            ### STUCK HERE ###
+            ##################
+            @owners_by_account_id.each do |id|   ####### HOW DO I SHOVEL THIS INFORMATION IN??? ######
+                ### PSUEDOCODE
+                # in the owners_by_account_id hash - for each account_id number key, the value is a hash of the owner's information. I want to put their account information in that hash soooooo, we need to add @@account_hash with the correct account id - WITHOUT RESETING THE HASH VALUE
+                if id.owner_id_number == @@owner_hash.key    #### WUUUUTTTT  ########
+                    @accounts << Bank::Account.find(id)
+                end
+
+            end
+        end
+
+
+
+
+        def self.pretty_print ##Prints with strings - doesn't return a value - I wanted this because it was prettier..
+            @owners_by_account_id.each_value do |value|
+                puts "ID NUMBER: #{value.owner_id_number} --- NAME: #{value.fullname} --- ADDRESS: #{value.fulladdress} --- ACCOUNT NUMBER: #{@account_id}" #--- ACCOUNT BALANCE: #{value[:accounts][:balance]} --- DATE OPENED: #{value[:accounts][:date_time]}"
+
+                ##########################################################
+                ### Figured out how to finish printing/combining above ###
+                ##########################################################
+
+                puts
+            end
+        end
+
+        ##########################
+        ##  REDO THESE METHODS  ##
+        ##########################
+
+        def self.all
+            @owners_by_account_id
+        end
+
+        ### FINDS BALANCE AND DATA/TIME ACCOUNT CREATED BASED ON ACCOUNT ID
+        def self.find(id_number)
+            @@owner_hash.fetch(id_number.to_s).pretty_print
+        end
     end
 end
 
-Bank::Account.gets_csv_info
-# #Bank::Account.pretty_print
-# ap Bank::Account.all
-# ap Bank::Account.find(1214)
+# Bank::Account.gets_csv_info
+# Bank::Account.pretty_print
+#ap Bank::Account.all
+
+
+# account = Bank::Account.new(account_id: 1234, balance: 3000, date_time: "today")
+# puts account.account_id
+# puts account.account_balance
+# puts account.time_opened
+
 
 Bank::Owner.gets_csv_info
-puts "pretty print"
-Bank::Owner.pretty_print
-#puts "all"
+#ap Bank::Owner.all
+# puts "pretty print"
+# Bank::Owner.pretty_print
+# #puts "all"
 #ap Bank::Owner.all
 # puts "find id 22"
 # ap Bank::Owner.find(22)
+
+
+###############################
+##### BANK ACCOUNT TESTS ######
+###############################
+
+# ap Bank::Account.find(1212)
+# ap Bank::Account.find_pretty(15156)
+# Bank::Account.find(15156).withdraw(100)
+# ap Bank::Account.find_pretty(15156)
+# puts
+# ap Bank::Account.find_pretty(15156)
+# Bank::Account.find(15156).deposit(100)
+# ap Bank::Account.find_pretty(15156)
+# puts
+#
+# Bank::Account.find(15156).check_balance
+
+
+
+
+# Bank::Account.account_hash[:15156].withdraw(50)
