@@ -1,37 +1,9 @@
-##############################
-### Learning Goals: Wave 2 ###
-##############################
-    # Create and use class methods
-    # Use a CSV file for loading data
-
-##############################
-###  Requirements: Wave 2  ###
-##############################
-    # Update the Account class to be able to handle all of these fields from the CSV file used as input.
-    # For example, manually choose the data from the first line of the CSV file and ensure you can create a new instance of your Account using that data
-    # Add the following class methods to your existing Account class
-        # self.all - returns a collection of Account instances, representing all of the Accounts described in the CSV. See below for the CSV file specifications
-        # self.find(id) - returns an instance of Account where the value of the id field in the CSV matches the passed parameter
-
-
-#################################
-####   WHAT I'M WORKING ON   ####
-#################################
-# COMBINE USER ID'S NUMBERS WITH ACCOUNTS - NEED TO SHOVEL INTO AN ARRAY OF ACCOUNTS FOR EACH OWNER (AROUND LINE 200)
-# FIX UP OWNER METHODS WITH UPDATED HASH/ARRAY STRUCTURES - BASE OFF OF ACCOUNT CLASS
-# ADD WAVE THREE CHILD CLASSES
-
-
-
+#################################################
+### WELCOME TO MY BANK - I HOPE YOU ENJOY IT  ###
+#################################################
 
 require 'csv'
 require 'awesome_print'
-require 'chronic'  ##For time.now in account creation default
-
-#LEARNING GOALS: Wave 1
-# 1. Create a class inside a module
-# 2. Create methods inside the *class to perform actions
-# 3. Learn how Ruby does error handling
 
 #Strips puncuation from a string
 def strip_puncuation(words)
@@ -46,8 +18,7 @@ module Bank
 
     ##CREATES A BANK ACCOUNT CLASS - stores id number, balance, and time it was opened
     class Account
-        attr_reader :account_id, :time_opened
-        attr_accessor :initial_balance, :account_balance, :account_hash
+        attr_reader :account_id, :time_opened, :initial_balance, :account_balance, :account_hash
         @@account_hash = {}
 
         ##TAKE OUT ALL DEFAULT VALUES BECAUSE IT DOESN'T LIKE THAT..
@@ -75,8 +46,8 @@ module Bank
 
         def deposit(amount)
             @account_balance += amount
-            puts "Deposited $#{amount} - Your new balance is: $#{('%.2f' % @account_balance)}"
-            return @account_balance
+            return "\nDeposited $#{amount} - Your new balance is: $#{('%.2f' % @account_balance)}"
+            r#eturn @account_balance
         end
 
         def check_balance
@@ -103,7 +74,7 @@ module Bank
                 new_account = {account_id: account_id, balance: balance, date_time: date_time}
                 @@account_hash[account_id] = self.new(new_account)
             end
-
+            return @@account_hash
         end
 
 
@@ -237,11 +208,75 @@ module Bank
     ########################################
     ###  OPTIONALS: MoneyMarketsAccount  ###
     ########################################
+    # Create a MoneyMarketAccount class which should inherit behavior from the Account class.
+    #
+    # A maximum of 6 transactions (deposits or withdrawals) are allowed per month on this account type
+    # The initial balance cannot be less than $10,000 - this will raise an ArgumentError
+    # Updated withdrawal logic:
+        # If a withdrawal causes the balance to go below $10,000, a fee of $100 is imposed and no more transactions are allowed until the balance is increased using a deposit transaction.
+        # Each transaction will be counted against the maximum number of transactions
+    # Updated deposit logic:
+        # Each transaction will be counted against the maximum number of transactions
+        # Exception to the above: A deposit performed to reach or exceed the minimum balance of $10,000 is not counted as part of the 6 transactions.
+    # #add_interest(rate): Calculate the interest on the balance and add the interest to the balance. Return the interest that was calculated and added to the balance (not the updated balance).
+        # Note** This is the same as the SavingsAccount interest.
+        # #reset_transactions: Resets the number of transactions to zero
 
 
+    class MoneyMarketsAccount < Account
+        attr_reader :transactions, :account_balance
+        MAX_TRANSACTIONS = 6
+        MINIMUM_MONEY = 10000
+        FINE = 100
 
+        def initialize(hash_of_one_account)
+            super
+            raise ArgumentError, ": cannot create an account with an initial balance less than $10,000" if hash_of_one_account[:balance] < MINIMUM_MONEY
+            @transactions = 0
+        end
 
+        def withdraw(amount)
+            if @transactions >= MAX_TRANSACTIONS
+                return "\nWARNING: You have reached the limit of #{MAX_TRANSACTIONS} transactions. Cannot complete this transaction."
+            elsif @account_balance < MINIMUM_MONEY
+                return "\nWARNING: Your account balance is below the minimum requirement of $#{MINIMUM_MONEY}. Cannot complete the transaction - you must desposit money into your account. \nYour balance is: $#{('%.2f' % @account_balance)}"
 
+            elsif (@account_balance - amount) < MINIMUM_MONEY
+                @account_balance -= amount
+                @account_balance -= FINE
+                return "\nWARNING: Account balance is now below minimum requirement of $#{MINIMUM_MONEY}. You will be fined a fee of $#{FINE}. Must deposit money into account before completing any other transactions. \nYour new balance is: $#{('%.2f' % @account_balance)}"
+            else
+                @transactions += 1
+                @account_balance -= amount
+                puts "Withdrew $#{amount} - Your new balance is: $#{('%.2f' % @account_balance)}"
+            end
+        end
+
+        def deposit(amount)
+            if @account_balance < MINIMUM_MONEY
+                if (@account_balance + amount) >= MINIMUM_MONEY
+                    super
+                else
+                    return "\nYou are below the minimum allowed balance of #{MINIMUM_MONEY}. You must deposit enough money to reach the minimum - cannot complete the transaction."
+                end
+            elsif @transactions >= MAX_TRANSACTIONS
+                return "\nWARNING: You have reached the limit of #{MAX_TRANSACTIONS} transactions. Cannot complete this transaction."
+            else
+                @transactions += 1
+                super
+            end
+        end
+
+        def add_interest(rate)
+            #balance * rate/100
+            @account_balance += @account_balance * rate/100
+            return "Your new balance is $#{('%.2f' % @account_balance)}"
+        end
+
+        def reset_transactions
+            @transactions = 0
+        end
+    end
 
 
     #########################
@@ -250,9 +285,9 @@ module Bank
 
     class Owner
         attr_accessor :name, :address, :account_id, :owners_by_account_id, :account_hash, :owner_id_number
-        attr_reader :owner_id_number, :fullname, :fulladdress, :array_of_accounts
+        attr_reader :owner_id_number, :fullname, :fulladdress, :array_of_accounts, :accounts
         @@owner_hash = {}
-        @@account_hash = Bank::Account.all
+        #@@account_hash = Bank::Account.all
 
         def initialize(hash_of_one_owner)
             @owner_id_number = hash_of_one_owner[:owner_id]
@@ -264,35 +299,9 @@ module Bank
             #puts "\nYou've created a new owner: #{@fullname}"
         end
 
-
-        #############################
-        ### EDIT BELOW 3 METHODS ####
-        #############################
-
         ####THIS ADDS TO A SPECIFIC OWNER - NOT JUST A NEW ACCOUNT
-        def add_account
-            @array_of_accounts.push(Account.new(account_hash))
-        end
-
-
-
-        def print_accounts
-            count = 1
-            array_of_accounts.each do |i|
-                puts " Account number #{i.account_id}: balance = $#{("%.2f" % i.account_balance)}"
-                count += 1
-            end
-        end
-
-        def print_banking_info
-            return "----------------------------------"
-            return "\nYour banking information is:
-    Name: #{@name}
-    Address: #{@address}
-    ID Number: #{@owner_id_number}
-    Accounts: "
-    print_accounts
-            puts "----------------------------------"
+        def add_account(account)
+            @accounts.push(account)
         end
 
         def self.gets_csv_info
@@ -304,70 +313,83 @@ module Bank
                 @@owner_hash[owner_id] = self.new(new_owner)
             end
 
-            # Bank::Account.gets_csv_info
-            # # Bank::Account.pretty_print
-            # @owners_by_account_id = {}
+            account_hash = Bank::Account.gets_csv_info
+            # Bank::Account.pretty_print
+            @owners_by_account_id = {}
+            #puts @owners_by_account_id
 
-            # CSV.open("support/account_owners.csv", "r").each do |line|
-            #     owner_id = line[1] #Owner id numbers
-            #     @account_id = line[0].to_i #Account id numbers
-            #     @owners_by_account_id[@account_id] = @@owner_hash[owner_id]
-            #     ####THIS IS A HASH WHERE THE KEY IS THE ACCOUNT ID NUMBER AND THE VALUE IS THE OWNER ID OWNER INFORMATION
-            # end
-            #
-            # #Prints owner number 1213
-            # ap @owners_by_account_id[1212]
-            # ap
-            # #ap Bank::Account.find(1212)
-            # #ap @@account_hash  #### PRINT THE ACCOUNT HASH GENERATED IN THE ACCOUNT CLASS
-            #
-            #
-            #
-            # ##################
-            # ### STUCK HERE ###
-            # ##################
-            # @owners_by_account_id.each do |id|   ####### HOW DO I SHOVEL THIS INFORMATION IN??? ######
-            #     ### PSUEDOCODE
-            #     # in the owners_by_account_id hash - for each account_id number key, the value is a hash of the owner's information. I want to put their account information in that hash soooooo, we need to add an @account to each person's account with the correct account id - WITHOUT RESETING THE HASH VALUE
-            #
-            #     if id.@owner_id_number  #### WUUUUTTTT  ########
-            #         id.@accounts.push(@@account_hash[id])          #### UGH... ### THIS IS HARD...
-            #     end
-            # end
+            CSV.open("support/account_owners.csv", "r").each do |line|
+                owner_id = line[1] #Owner id numbers
+                @account_id = line[0] #Account id numbers
+                @owners_by_account_id[@account_id] = owner_id
+            end
 
+            account_hash.each do |key, value|
+                @@owner_hash[@owners_by_account_id[key]].add_account(value)
+            end
+            return @@owner_hash
         end
 
 
+        ###CLASS METHOD PRETTY PRINT
         def self.pretty_print ##Prints with strings - doesn't return a value - I wanted this because it was prettier..
-            @owners_by_account_id.each_value do |value|
-                puts "ID NUMBER: #{value.owner_id_number} --- NAME: #{value.fullname} --- ADDRESS: #{value.fulladdress} --- ACCOUNT NUMBER: #{@account_id}" #--- ACCOUNT BALANCE: #{value[:accounts][:balance]} --- DATE OPENED: #{value[:accounts][:date_time]}"
-
-                ##########################################################
-                ### Figured out how to finish printing/combining above ###
-                ##########################################################
-
-                puts
+            @@owner_hash.each_value do |value|
+                return """***********************************************************
+ID NUMBER: #{value.owner_id_number}
+NAME: #{value.fullname}
+ADDRESS: #{value.fulladdress}
+ACCOUNTS:
+    ACCOUNT NUMBER: #{value.accounts[0].account_id}
+    ACCOUNT BALANCE: #{value.accounts[0].account_balance}
+    DATE OPENED: #{value.accounts[0].time_opened}
+***********************************************************"""
             end
         end
 
-        ##########################
-        ##  REDO THESE METHODS  ##
-        ##########################
-
         def self.all
-            @owners_by_account_id
+            @@owner_hash
         end
 
         ### FINDS BALANCE AND DATA/TIME ACCOUNT CREATED BASED ON ACCOUNT ID
         def self.find(id_number)
-            @@owner_hash.fetch(id_number.to_s).pretty_print
+            @@owner_hash.fetch(id_number.to_s)
         end
+
+        def self.find_and_pretty_print(id_number)
+            owner = @@owner_hash.fetch(id_number.to_s)
+            return """*************************************************
+ID NUMBER: #{owner.owner_id_number}
+NAME: #{owner.fullname}
+ADDRESS: #{owner.fulladdress}
+ACCOUNTS:
+    ACCOUNT NUMBER: #{owner.accounts[0].account_id}
+    ACCOUNT BALANCE: #{owner.accounts[0].account_balance}
+    DATE OPENED: #{owner.accounts[0].time_opened}
+***********************************************"""
+        end
+
     end
 end
 
-# Bank::Account.gets_csv_info
-# Bank::Account.pretty_print
-#ap Bank::Account.all
+
+
+
+
+
+##################
+###  MY TESTS  ###
+##################
+
+
+Bank::Owner.gets_csv_info        ###### NEED THIS TO RUN THRHOUGH THE CSV FILES
+# puts Bank::Owner.pretty_print
+#ap Bank::Owner.all
+ap Bank::Owner.find(22)
+puts
+puts Bank::Owner.find_and_pretty_print(22)
+
+
+
 
 
 # account = Bank::Account.new(account_id: 1234, balance: 3000, date_time: "today")
@@ -376,16 +398,49 @@ end
 # puts account.time_opened
 
 
+# puts "STARTS TOO LOW"
+# money_market = Bank::MoneyMarketsAccount.new(account_id: 1234, balance: 3000, date_time: "today")
+#
+
+# puts "OVERDRAWN"
+# money_market = Bank::MoneyMarketsAccount.new(account_id: 1234, balance: 10000, date_time: "today")
+# puts money_market.deposit(30)
+# puts money_market.withdraw(100)
+# puts money_market.withdraw(10)
+# puts money_market.deposit(5)
+# puts money_market.transactions
+# puts money_market.deposit(250)
+# puts money_market.transactions
+
+# puts "TOO MANY TRANSACTIONS"
+# money_market2 = Bank::MoneyMarketsAccount.new(account_id: 1234, balance: 40000, date_time: "today")
+# puts money_market2.withdraw(10)
+# puts money_market2.withdraw(10)
+# puts money_market2.withdraw(10)
+# puts money_market2.withdraw(10)
+# puts money_market2.deposit(50)
+# puts money_market2.deposit(50)
+# puts money_market2.deposit(50)
+# puts money_market2.deposit(50)
+# puts money_market2.transactions
+
+# puts "INTEREST"
+# money_market = Bank::MoneyMarketsAccount.new(account_id: 1234, balance: 10000, date_time: "today")
+# puts money_market.add_interest(0.25)
+
+
+
+
 # Bank::Owner.gets_csv_info
 # puts "\nSAVINGS"
-# test_savings = Bank::SavingsAccount.new({account_id: 4444, balance: 10000, date_time: 02/04/2000})
+#test_savings = Bank::SavingsAccount.new({account_id: 4444, balance: 9, date_time: 02/04/2000})
 # ap test_savings.withdraw(600000)
 # ap test_savings.withdraw(500)
 # ap test_savings.add_interest(0.25)
 
 
-puts "\nCHECKING"
-test_savings = Bank::CheckingAccount.new({account_id: 4444, balance: 1000, date_time: 02/04/2000})
+# puts "\nCHECKING"
+# test_savings = Bank::CheckingAccount.new({account_id: 4444, balance: 1000, date_time: 02/04/2000})
 #ap test_savings.withdraw(600000)
 #ap test_savings.withdraw(500)
 # puts "1"
@@ -417,10 +472,6 @@ test_savings = Bank::CheckingAccount.new({account_id: 4444, balance: 1000, date_
 # puts "find id 22"
 # ap Bank::Owner.find(22)
 
-
-###############################
-##### BANK ACCOUNT TESTS ######
-###############################
 
 # ap Bank::Account.find(1212)
 # ap Bank::Account.find_pretty(15156)
